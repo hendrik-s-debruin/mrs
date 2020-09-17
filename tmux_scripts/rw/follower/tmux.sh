@@ -13,6 +13,8 @@ fi
 
 # FOLLOWER
 
+LEADER_NAME=uav42
+
 source $HOME/.bashrc
 
 # change this to your liking
@@ -34,7 +36,7 @@ input=(
 '
   'Sensors' 'waitForRos; roslaunch mrs_uav_general sensors.launch
 '
-  'tf' 'waitForRos; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 '"$UAV_NAME"'/gps_origin uav52/gps_origin
+  'tf' 'waitForRos; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 '"$UAV_NAME"'/gps_origin '"$LEADER_NAME"'/gps_origin
 '
   'Status' 'waitForRos; roslaunch mrs_uav_status status.launch
 '
@@ -48,9 +50,9 @@ input=(
 '
   'KalmanFilter' 'waitForRos; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/stable_origin
 '  
-  'Supervisor' 'waitForRos; roslaunch summer_school_supervisor supervisor.launch
+  'Supervisor' 'waitForRos; roslaunch summer_school_supervisor supervisor.launch leader_uav:='"$LEADER_NAME"' follower_uav:='"$UAV_NAME"'
 '
-  'StartChallenge' 'rosservice call /'"$UAV_NAME"'/summer_school_2020/start_score_counting; rosservice call /uav53/control_manager/start_trajectory_tracking'
+  'StartChallenge' 'rosservice call /'"$UAV_NAME"'/summer_school_supervisor/start_score_counting; rosservice call /'"$LEADER_NAME"'/control_manager/start_trajectory_tracking'
   'Land' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land
 '
   'LandHome' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land_home

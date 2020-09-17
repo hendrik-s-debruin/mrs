@@ -82,7 +82,7 @@ windows:
       layout: even-vertical
       panes:
         - 'export UAV_NAME=uav2;
-          history -s roslaunch summer_school_supervisor supervisor.launch debug:=false'
+          history -s roslaunch summer_school_supervisor supervisor.launch debug:=false leader_uav:=uav1 follower_uav:=uav2'
   - start_challenge:
       layout: even-vertical
       synchronize: after
