@@ -11,6 +11,8 @@ if [ "$(id -u)" == "0" ]; then
   exec sudo -u mrs "$0" "$@"
 fi
 
+# LEADER
+
 source $HOME/.bashrc
 
 # change this to your liking
