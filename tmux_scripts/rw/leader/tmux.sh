@@ -14,7 +14,7 @@ fi
 source $HOME/.bashrc
 
 # change this to your liking
-PROJECT_NAME=summer_school_2020_follower
+PROJECT_NAME=summer_school_leader
 
 # do not change this
 MAIN_DIR=~/"bag_files"
@@ -26,23 +26,21 @@ pre_input="mkdir -p $MAIN_DIR/$PROJECT_NAME"
 # 'name' 'command'
 # DO NOT PUT SPACES IN THE NAMES
 input=(
-  # 'Rosbag' 'waitForOffboard; rosrun mrs_uav_general record.sh
-# '
+  'Rosbag' 'waitForOffboard; rosrun mrs_uav_general record.sh
+'
   'Sensors' 'waitForRos; roslaunch mrs_uav_general sensors.launch
 '
   'Status' 'waitForRos; roslaunch mrs_uav_status status.launch
 '
-  'Control' 'waitForRos; roslaunch mrs_uav_general core.launch
+  'Control' 'waitForRos; roslaunch mrs_uav_general core.launch config_constraint_manager:=./custom_configs/constraint_manager.yaml
 '
   'AutoStart' 'waitForRos; roslaunch mrs_uav_general automatic_start.launch
 '
-  'UvObserver' 'export TARGET_FREQUENCY_LEDS=6; waitForControl; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
+  'LoadTrajectory' 'waitForControl; roslaunch uvdar_leader_follower load_leader_trajectory.launch
 '
-  'KalmanFilter' 'waitForControl; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/stable_origin
-'  
-  'Follower' 'history -s roslaunch summer_school_supervisor supervisor.launch
+  'Land' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land
 '
-  'ScoreCounting' 'history -s rosservice call /'"$UAV_NAME"'/summer_school_2020/start_score_counting
+  'LandHome' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land_home
 '
   'slow_odom' 'waitForRos; rostopic echo /'"$UAV_NAME"'/odometry/slow_odom
 '
