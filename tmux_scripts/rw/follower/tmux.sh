@@ -46,7 +46,7 @@ input=(
 '
   'UvObserver' 'export TARGET_FREQUENCY_LEDS=15; waitForRos; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
 '
-  'KalmanFilter' 'waitForRos; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/stable_origin
+  'KalmanFilter' 'waitForRos; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/gps_origin
 '  
   'LoadTrajectory' 'waitForControl; roslaunch uvdar_leader_follower load_follower_trajectory.launch
 '
