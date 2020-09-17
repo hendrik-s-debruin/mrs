@@ -11,6 +11,8 @@ if [ "$(id -u)" == "0" ]; then
   exec sudo -u mrs "$0" "$@"
 fi
 
+# FOLLOWER
+
 source $HOME/.bashrc
 
 # change this to your liking
@@ -26,9 +28,11 @@ pre_input="mkdir -p $MAIN_DIR/$PROJECT_NAME"
 # 'name' 'command'
 # DO NOT PUT SPACES IN THE NAMES
 input=(
-  # 'Rosbag' 'waitForOffboard; rosrun mrs_uav_general record.sh
-# '
+  'Rosbag' 'waitForOffboard; rosrun mrs_uav_general record.sh
+'
   'Sensors' 'waitForRos; roslaunch mrs_uav_general sensors.launch
+'
+  'tf' 'waitForRos; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 '"$UAV_NAME"'/gps_origin uav52/gps_origin
 '
   'Status' 'waitForRos; roslaunch mrs_uav_status status.launch
 '
@@ -36,18 +40,15 @@ input=(
 '
   'AutoStart' 'waitForRos; roslaunch uvdar_leader_follower automatic_start.launch
 '
-  'UvObserver' 'export TARGET_FREQUENCY_LEDS=6; waitForControl; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
-'
-  'KalmanFilter' 'waitForControl; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/stable_origin
-'  
-  'Supervisor' 'history -s roslaunch summer_school_supervisor supervisor.launch
-'
-  'ScoreCounting' 'history -s rosservice call /'"$UAV_NAME"'/summer_school_2020/start_score_counting
-'
   'LoadTrajectory' 'waitForControl; roslaunch uvdar_leader_follower load_follower_trajectory.launch
 '
-  'StartChallenge' 'waitForControl; roslaunch uvdar_leader_follower fly_to_start.launch
+  'UvObserver' 'export TARGET_FREQUENCY_LEDS=6; waitForRos; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
 '
+  'KalmanFilter' 'waitForRos; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/stable_origin
+'  
+  'Supervisor' 'waitForRos; roslaunch summer_school_supervisor supervisor.launch
+'
+  'StartChallenge' 'rosservice call /'"$UAV_NAME"'/summer_school_2020/start_score_counting; rosservice call /uav53/control_manager/start_trajectory_tracking'
   'Land' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land
 '
   'LandHome' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land_home
