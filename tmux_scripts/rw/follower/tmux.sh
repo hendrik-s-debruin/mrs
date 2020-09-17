@@ -34,7 +34,7 @@ input=(
 '
   'Control' 'waitForRos; roslaunch mrs_uav_general core.launch config_constraint_manager:=./custom_configs/constraint_manager.yaml
 '
-  'AutoStart' 'waitForRos; roslaunch mrs_uav_general automatic_start.launch
+  'AutoStart' 'waitForRos; roslaunch uvdar_leader_follower automatic_start.launch
 '
   'UvObserver' 'export TARGET_FREQUENCY_LEDS=6; waitForControl; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
 '
@@ -45,6 +45,8 @@ input=(
   'ScoreCounting' 'history -s rosservice call /'"$UAV_NAME"'/summer_school_2020/start_score_counting
 '
   'LoadTrajectory' 'waitForControl; roslaunch uvdar_leader_follower load_follower_trajectory.launch
+'
+  'StartChallenge' 'waitForControl; roslaunch uvdar_leader_follower fly_to_start.launch
 '
   'Land' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land
 '
