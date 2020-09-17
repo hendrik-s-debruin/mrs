@@ -22,7 +22,7 @@ PROJECT_NAME=summer_school_leader
 MAIN_DIR=~/"bag_files"
 
 # following commands will be executed first in each window
-pre_input="mkdir -p $MAIN_DIR/$PROJECT_NAME"
+pre_input="mkdir -p $MAIN_DIR/$PROJECT_NAME; export WORLD_FILE=../world.yaml"
 
 # define commands
 # 'name' 'command'
