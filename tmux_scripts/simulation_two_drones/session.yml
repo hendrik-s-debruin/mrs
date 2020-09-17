@@ -90,9 +90,9 @@ windows:
         - 'export UAV_NAME=uav1;
           history -s rosservice call /$UAV_NAME/control_manager/start_trajectory_tracking'
         - 'export UAV_NAME=uav2;
-          history -s rosservice call /$UAV_NAME/summer_school_2020/start_score_counting'
+          history -s rosservice call /$UAV_NAME/summer_school_supervisor/start_score_counting'
   - gazebo_camera_follow:
       layout: tiled
       panes:
         - waitForOdometry; gz camera -c gzclient_camera -f uav1; history -s gz camera -c gzclient_camera -f uav2
-        - waitForOdometry; sleep 2; ~/.i3/layout_manager.sh layout.json
+        - waitForControl; sleep 5; ~/.i3/layout_manager.sh layout.json

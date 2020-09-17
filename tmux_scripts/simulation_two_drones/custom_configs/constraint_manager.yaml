@@ -28,13 +28,13 @@ uvdar:
 
     ascending:
       speed: 3.0
-      acceleration: 3.0
+      acceleration: 2.0
       jerk: 20.0
       snap: 20.0
 
     descending:
       speed: 3.0
-      acceleration: 3.0
+      acceleration: 2.0
       jerk: 20.0
       snap: 20.0
 
