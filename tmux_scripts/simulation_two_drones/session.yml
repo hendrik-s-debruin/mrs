@@ -24,8 +24,8 @@ windows:
   - control:
       layout: tiled
       panes:
-        - export UAV_NAME=uav1; waitForOdometry; roslaunch mrs_uav_general core.launch
-        - export UAV_NAME=uav2; waitForOdometry; roslaunch mrs_uav_general core.launch
+        - export UAV_NAME=uav1; waitForOdometry; roslaunch mrs_uav_general core.launch config_constraint_manager:=./custom_configs/constraint_manager.yaml
+        - export UAV_NAME=uav2; waitForOdometry; roslaunch mrs_uav_general core.launch config_constraint_manager:=./custom_configs/constraint_manager.yaml
   - automatic_start:
       layout: tiled
       panes:
@@ -60,7 +60,7 @@ windows:
       panes:
         # leader will not avoid collisions
         - export UAV_NAME=uav1; waitForControl; rosservice call /$UAV_NAME/control_manager/mpc_tracker/collision_avoidance 0
-        - export UAV_NAME=uav2; waitForControl; rosservice call /$UAV_NAME/constraint_manager/set_constraints slow
+        - export UAV_NAME=uav2; waitForControl; rosservice call /$UAV_NAME/constraint_manager/set_constraints uvdar
         # you can experiment with controller settings by changing the follower constraints to medium. Beware: faster acceleration will produce more tilt -> less stable camera image
   - uv_observer:
       layout: even-vertical
