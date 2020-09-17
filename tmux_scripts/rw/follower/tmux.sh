@@ -30,6 +30,8 @@ pre_input="mkdir -p $MAIN_DIR/$PROJECT_NAME"
 input=(
   'Rosbag' 'waitForOffboard; rosrun mrs_uav_general record.sh
 '
+  'Nimbro' 'waitForRos; roslaunch mrs_uav_general nimbro.launch
+'
   'Sensors' 'waitForRos; roslaunch mrs_uav_general sensors.launch
 '
   'tf' 'waitForRos; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 '"$UAV_NAME"'/gps_origin uav52/gps_origin
@@ -42,7 +44,7 @@ input=(
 '
   'LoadTrajectory' 'waitForControl; roslaunch uvdar_leader_follower load_follower_trajectory.launch
 '
-  'UvObserver' 'export TARGET_FREQUENCY_LEDS=6; waitForRos; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
+  'UvObserver' 'export TARGET_FREQUENCY_LEDS=15; waitForRos; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
 '
   'KalmanFilter' 'waitForRos; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/stable_origin
 '  
