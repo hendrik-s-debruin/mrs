@@ -1,5 +1,9 @@
 reference_frame: "gps_origin"
 
+use_estimator: true
+use_trajectory_reference: true
+use_speed_tracker: false
+
 control_action_interval: 0.01 # [s]
 uvdar_msg_interval: 0.1 # [s]
 

@@ -1,5 +1,6 @@
 #include <uvdar_leader_follower/follower.h>
 #include <uvdar_leader_follower/FollowerConfig.h>
+#include <cmath>
 
 bool is_initialized     = false;
 bool got_odometry       = false;
@@ -52,6 +53,10 @@ uvdar_leader_follower::FollowerConfig FollowerController::initialize(mrs_lib::Pa
   param_loader.loadParam("desired_offset/y", position_offset.y());
   param_loader.loadParam("desired_offset/z", position_offset.z());
   param_loader.loadParam("heading_offset", heading_offset);
+
+  param_loader.loadParam("use_estimator",            use_estimator);
+  param_loader.loadParam("use_speed_tracker",        use_speed_tracker);
+  param_loader.loadParam("use_trajectory_reference", use_trajectory_reference);
 
   //// initialize the dynamic reconfigurables with values from YAML file and values set above
   uvdar_leader_follower::FollowerConfig config;
@@ -197,14 +202,14 @@ ReferencePoint FollowerController::capReferencePointDelta(
 	capped_reference_point.heading         = desired_reference.heading;
 	capped_reference_point.use_for_control = desired_reference.use_for_control;
 
-	if(r.norm() <= 14.5)
+	if(r.norm() <= 13)
 	{
 		capped_reference_point.position = desired_reference.position;
 	}
 	else
 	{
 		auto d = r.normalized();
-		capped_reference_point.position = from_reference.position + d*14.5;
+		capped_reference_point.position = from_reference.position + d*13;
 		ROS_INFO("CAPPING REFERENCE POINT EARLY");
 	}
 
@@ -259,16 +264,28 @@ geometry_msgs::Pose FollowerController::calculatePerpendicularPoint(
 
 /* createReferenceTrajectory //{ */
 ReferenceTrajectory FollowerController::createReferenceTrajectory() {
-  ReferenceTrajectory trajectory;
+	auto disable_trajectory_tracking_msg = []() {
+		ReferenceTrajectory trajectory;
+		trajectory.positions.push_back(Eigen::Vector3d::Zero());
+		trajectory.headings.push_back(0.0);
+		trajectory.sampling_time   = 0.0;
+		trajectory.use_for_control = false;
+		return trajectory;
+	};
+	// sanity check
+	if(!is_initialized || !got_odometry || !got_uvdar || !got_tracker_output)
+	{
+		return disable_trajectory_tracking_msg();
+	}
 
-  // sanity check
-  if (!is_initialized || !got_odometry || !got_uvdar || !got_tracker_output) {
-    trajectory.positions.push_back(Eigen::Vector3d::Zero());
-    trajectory.headings.push_back(0.0);
-    trajectory.sampling_time   = 0.0;
-    trajectory.use_for_control = false;
-    return trajectory;
-  }
+  // Trajectory generation here does not work when the follower needs to evade
+  // the leader. Disable and fall back to position tracking instead
+	if(std::abs(follower_position_odometry.z() - 3) > 0.3)
+	{
+		return disable_trajectory_tracking_msg();
+	}
+
+  ReferenceTrajectory trajectory;
 
   // Example - start trajectory at current UAV position and move in the predicted direction of leader motion
   // No subsampling, only two points are created in this example
