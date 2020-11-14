@@ -65,6 +65,11 @@ public:
 	                              Eigen::Vector3d const &   follower_position,
 	                              double distance_in_meters) const;
 
+  ReferencePoint capReferencePointDelta(
+		ReferencePoint const &desired_reference,
+		ReferencePoint const &from_reference
+	) const;
+
   nav_msgs::Odometry getCurrentEstimate();
   double             getControlActionInterval() {
     return control_action_interval;

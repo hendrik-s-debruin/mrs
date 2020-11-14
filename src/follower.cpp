@@ -175,9 +175,41 @@ ReferencePoint FollowerController::createReferencePoint() {
   point.heading         = heading_offset;
   point.use_for_control = true;
 
+
+  // cap the commands
+  ReferencePoint current_position;
+  current_position.position = follower_position_odometry;
+  current_position.heading  = follower_heading_odometry;
+
+  point = capReferencePointDelta(point, current_position);
+
   return point;
 }
 //}
+
+ReferencePoint FollowerController::capReferencePointDelta(
+		ReferencePoint const &desired_reference,
+		ReferencePoint const &from_reference
+	) const
+{
+	auto r = desired_reference.position - from_reference.position;
+	ReferencePoint capped_reference_point;
+	capped_reference_point.heading         = desired_reference.heading;
+	capped_reference_point.use_for_control = desired_reference.use_for_control;
+
+	if(r.norm() <= 14.5)
+	{
+		capped_reference_point.position = desired_reference.position;
+	}
+	else
+	{
+		auto d = r.normalized();
+		capped_reference_point.position = from_reference.position + d*14.5;
+		ROS_INFO("CAPPING REFERENCE POINT EARLY");
+	}
+
+	return capped_reference_point;
+}
 
 geometry_msgs::Pose FollowerController::calculatePerpendicularPoint(
     nav_msgs::Odometry const &leader,
