@@ -16,6 +16,15 @@ Eigen::Vector3d follower_position_tracker;
 Eigen::Vector3d follower_linear_velocity_tracker;
 double          follower_heading_tracker;
 double          follower_heading_rate_tracker;
+double          speed_track_min_distance;
+double          speed_track_max_distance;
+double          speed_track_min_safe_distance;
+double          speed_track_max_safe_distance;
+double          speed_track_min_attractor_offset;
+double          speed_track_min_gain;
+double          speed_track_attractor_gain;
+double          speed_track_max_gain;
+double          speed_track_max_vel;
 
 Eigen::Vector3d leader_position;
 ros::Time       last_leader_contact;
@@ -54,9 +63,27 @@ uvdar_leader_follower::FollowerConfig FollowerController::initialize(mrs_lib::Pa
   param_loader.loadParam("desired_offset/z", position_offset.z());
   param_loader.loadParam("heading_offset", heading_offset);
 
-  param_loader.loadParam("use_estimator",            use_estimator);
-  param_loader.loadParam("use_speed_tracker",        use_speed_tracker);
-  param_loader.loadParam("use_trajectory_reference", use_trajectory_reference);
+  param_loader.loadParam("use_estimator",                    use_estimator);
+  param_loader.loadParam("use_speed_tracker",                use_speed_tracker);
+  param_loader.loadParam("use_trajectory_reference",         use_trajectory_reference);
+  param_loader.loadParam("speed_track_max_distance",         speed_track_max_distance);
+  param_loader.loadParam("speed_track_min_distance",         speed_track_min_distance);
+  param_loader.loadParam("speed_track_max_safe_distance",    speed_track_max_safe_distance);
+  param_loader.loadParam("speed_track_min_attractor_offset", speed_track_min_attractor_offset);
+  param_loader.loadParam("speed_track_min_safe_distance",    speed_track_min_safe_distance);
+  param_loader.loadParam("speed_track_max_gain",             speed_track_max_gain);
+  param_loader.loadParam("speed_track_attractor_gain",       speed_track_attractor_gain);
+  param_loader.loadParam("speed_track_max_vel",              speed_track_max_vel);
+
+  ROS_INFO("speed_track_max_distance: %f",         speed_track_max_distance);
+  ROS_INFO("speed_track_min_distance: %f",         speed_track_min_distance);
+  ROS_INFO("speed_track_max_safe_distance: %f",    speed_track_max_safe_distance);
+  ROS_INFO("speed_track_min_attractor_offset: %f", speed_track_min_attractor_offset);
+  ROS_INFO("speed_track_min_safe_distance: %f",    speed_track_min_safe_distance);
+  ROS_INFO("speed_track_min_gain: %f",             speed_track_min_gain);
+  ROS_INFO("speed_track_attractor_gain: %f",       speed_track_attractor_gain);
+  ROS_INFO("speed_track_max_gain: %f",             speed_track_max_gain);
+  ROS_INFO("speed_track_max_vel: %f",              speed_track_max_vel);
 
   //// initialize the dynamic reconfigurables with values from YAML file and values set above
   uvdar_leader_follower::FollowerConfig config;
@@ -331,17 +358,120 @@ SpeedCommand FollowerController::createSpeedCommand() {
     command.use_for_control = false;
   }
 
-  if (use_estimator) {
-    command.velocity = leader_predicted_velocity;
-    command.height   = leader_predicted_position.z() + position_offset.z();
-    command.heading  = follower_heading_odometry;
+  if(use_estimator && use_speed_tracker)
+  {
+	double          distance_between_drones = (leader_position - follower_position_odometry).norm();
+	Eigen::Vector3d correction_dir          = (leader_position - follower_position_odometry).normalized();
+	double          correction_speed;
+
+	// =========================================================================
+	// Distance correction
+	// =========================================================================
+	if( distance_between_drones < speed_track_min_safe_distance)
+	{
+		double d = speed_track_min_safe_distance - speed_track_min_distance;
+		correction_speed =
+		    speed_track_min_gain *
+		    tan(
+		        (M_PI / (2 * d)) *
+		        (distance_between_drones - speed_track_min_safe_distance)
+		    );
+	}
+	if( distance_between_drones > speed_track_max_safe_distance)
+	{
+		double d = speed_track_max_distance - speed_track_max_safe_distance;
+		correction_speed =
+		    speed_track_max_gain *
+		    tan(
+		        (M_PI / (2 * d)) *
+		        (distance_between_drones - speed_track_max_safe_distance)
+		    );
+
+	}
+	else
+	{
+		correction_speed = 0;
+	}
+
+	Eigen::Vector3d correction_velocity = correction_speed * correction_dir;
+
+	// =========================================================================
+	// Attractor to point
+	// =========================================================================
+	Eigen::Vector3d attractor_vel;
+	{
+		// Eigen::Vector3d leader_vel_dir = leader_predicted_velocity.normalized();
+		// double          target_distance_to_leader =
+		// 	(speed_track_max_safe_distance - speed_track_min_safe_distance) / 2;
+
+		// Eigen::Matrix<double, 3, 3> rotate_90_deg;
+		// rotate_90_deg << 0, -1, 0, 1, 0, 0, 0, 0, 1;
+
+		// auto perp_to_heading = rotate_90_deg*leader_vel_dir;
+
+		// Eigen::Vector3d target_position_candidate_1 =
+		// 	perp_to_heading * target_distance_to_leader +
+		// 	leader_predicted_position;
+		// Eigen::Vector3d target_position_candidate_2 =
+		// 	-perp_to_heading * target_distance_to_leader +
+		// 	leader_predicted_position;
+
+		// Eigen::Vector3d target_position;
+		// if((follower_position_odometry - target_position_candidate_1).norm() <
+		//    (follower_position_odometry - target_position_candidate_2).norm())
+		// {
+		// 	target_position = target_position_candidate_1;
+		// }
+		// else
+		// {
+		// 	target_position = target_position_candidate_2;
+		// }
+		// Eigen::Vector3d drone_to_attractor =
+		// 	target_position - follower_position_odometry;
+		// double distance_to_attractor = drone_to_attractor.norm();
+
+		Eigen::Vector3d attractor_point = leader_predicted_position + position_offset;
+		Eigen::Vector3d drone_to_attractor =
+			attractor_point - follower_position_odometry;
+		double distance_to_attractor = drone_to_attractor.norm();
+
+		double attractor_speed = speed_track_attractor_gain *
+			                     distance_to_attractor * distance_to_attractor;
+
+		attractor_vel =
+			attractor_speed * drone_to_attractor.normalized();
+
+		// double attractor_speed;
+		// if(distance_to_attractor > speed_track_min_attractor_offset)
+		// {
+		// 	attractor_speed = speed_track_attractor_gain*
+		// 		(distance_to_attractor - speed_track_min_attractor_offset)*
+		// 		(distance_to_attractor - speed_track_min_attractor_offset);
+		// }
+	}
+
+	// Eigen::Vector3d target_velocity = leader_predicted_velocity + correction_velocity;
+	Eigen::Vector3d target_velocity = attractor_vel + correction_velocity;
+
+	if(target_velocity.norm() > speed_track_max_vel)
+	{
+		target_velocity = target_velocity.normalized() * speed_track_max_vel;
+	}
+
+	  command.velocity = target_velocity;
+	  command.height   = 3;
+	  command.heading  = follower_heading_odometry;
+	  command.use_for_control = true;
+  }
+  else
+  {
+	  command.use_for_control = false;
   }
 
-  if (use_speed_tracker) {
-    command.use_for_control = true;
-  } else {
-    command.use_for_control = false;
-  }
+  // if(command.velocity.norm() < 0.01)
+  // {
+		// command.use_for_control = false;
+  // }
   return command;
 }
 //}

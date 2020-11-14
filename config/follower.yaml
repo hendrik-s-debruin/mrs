@@ -2,7 +2,17 @@ reference_frame: "gps_origin"
 
 use_estimator: true
 use_trajectory_reference: true
-use_speed_tracker: false
+use_speed_tracker: true
+
+speed_track_min_distance: 3.0 # [m]
+speed_track_max_distance: 9.0 # [m]
+speed_track_min_safe_distance: 5.0 #[m]
+speed_track_max_safe_distance: 7.0 #[m]
+speed_track_min_attractor_offset: 0.5 #[m]
+speed_track_min_gain: 5.0
+speed_track_max_gain: 5.0
+speed_track_attractor_gain: 1.0
+speed_track_max_vel: 3.5
 
 control_action_interval: 0.01 # [s]
 uvdar_msg_interval: 0.1 # [s]
