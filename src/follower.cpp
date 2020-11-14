@@ -179,6 +179,52 @@ ReferencePoint FollowerController::createReferencePoint() {
 }
 //}
 
+geometry_msgs::Pose FollowerController::calculatePerpendicularPoint(
+    nav_msgs::Odometry const &leader,
+    Eigen::Vector3d const &   follower_position,
+    double                    distance) const
+{
+	Eigen::Vector3d leader_vel;
+	leader_vel <<
+		leader.twist.twist.linear.x,
+		leader.twist.twist.linear.y,
+		leader.twist.twist.linear.z;
+
+	auto leader_heading = leader_vel.normalized();
+
+	Eigen::Matrix<double, 3, 3> rotate_90_deg;
+	rotate_90_deg << 0, -1, 0, 1, 0, 0, 0, 0, 1;
+
+	auto perp_to_heading = rotate_90_deg*leader_heading;
+
+	Eigen::Vector3d leader_position;
+	leader_position <<
+		leader.pose.pose.position.x,
+		leader.pose.pose.position.y,
+		leader.pose.pose.position.z;
+
+	Eigen::Vector3d target_position_candidate_1 = leader_position + perp_to_heading*distance;
+	Eigen::Vector3d target_position_candidate_2 = leader_position - perp_to_heading*distance;
+	Eigen::Vector3d target_position;
+
+	if((follower_position - target_position_candidate_1).norm() <
+	   (follower_position - target_position_candidate_2).norm())
+	{
+		target_position = target_position_candidate_1;
+	}
+	else
+	{
+		target_position = target_position_candidate_2;
+	}
+
+	geometry_msgs::Pose return_pose;
+	return_pose.position.x = target_position(0);
+	return_pose.position.y = target_position(1);
+	return_pose.position.z = target_position(2);
+
+	return return_pose;
+}
+
 /* createReferenceTrajectory //{ */
 ReferenceTrajectory FollowerController::createReferenceTrajectory() {
   ReferenceTrajectory trajectory;

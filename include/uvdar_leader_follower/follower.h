@@ -60,6 +60,11 @@ public:
   void receiveUvdar(const geometry_msgs::PoseWithCovarianceStamped& uvdar_msg);
   void dynamicReconfigureCallback(uvdar_leader_follower::FollowerConfig& config, uint32_t level);
 
+  geometry_msgs::Pose
+	  calculatePerpendicularPoint(nav_msgs::Odometry const &leader,
+	                              Eigen::Vector3d const &   follower_position,
+	                              double distance_in_meters) const;
+
   nav_msgs::Odometry getCurrentEstimate();
   double             getControlActionInterval() {
     return control_action_interval;
