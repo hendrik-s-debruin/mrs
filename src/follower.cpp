@@ -27,6 +27,7 @@ double speed_track_evade_max_safe;
 double speed_track_evade_max;
 double speed_track_evade_min_gain;
 double speed_track_evade_max_gain;
+double speed_track_heading_attractor_gain;
 
 Eigen::Vector3d leader_position;
 ros::Time       last_leader_contact;
@@ -69,16 +70,17 @@ uvdar_leader_follower::FollowerConfig FollowerController::initialize(mrs_lib::Pa
   param_loader.loadParam("use_speed_tracker",                use_speed_tracker);
   param_loader.loadParam("use_trajectory_reference",         use_trajectory_reference);
 
-	param_loader.loadParam("speed_track_max_vel",          speed_track_max_vel);
-	param_loader.loadParam("speed_track_attractor_width",  speed_track_attractor_width);
-	param_loader.loadParam("speed_track_attractor_gain",   speed_track_attractor_gain);
-	param_loader.loadParam("speed_track_attractor_offset", speed_track_attractor_offset);
-	param_loader.loadParam("speed_track_evade_min_safe",   speed_track_evade_min_safe);
-	param_loader.loadParam("speed_track_evade_min",        speed_track_evade_min);
-	param_loader.loadParam("speed_track_evade_max_safe",   speed_track_evade_max_safe);
-	param_loader.loadParam("speed_track_evade_max",        speed_track_evade_max);
-	param_loader.loadParam("speed_track_evade_min_gain",   speed_track_evade_min_gain);
-	param_loader.loadParam("speed_track_evade_max_gain",   speed_track_evade_max_gain);
+	param_loader.loadParam("speed_track_max_vel",                speed_track_max_vel);
+	param_loader.loadParam("speed_track_attractor_width",        speed_track_attractor_width);
+	param_loader.loadParam("speed_track_attractor_gain",         speed_track_attractor_gain);
+	param_loader.loadParam("speed_track_attractor_offset",       speed_track_attractor_offset);
+	param_loader.loadParam("speed_track_evade_min_safe",         speed_track_evade_min_safe);
+	param_loader.loadParam("speed_track_evade_min",              speed_track_evade_min);
+	param_loader.loadParam("speed_track_evade_max_safe",         speed_track_evade_max_safe);
+	param_loader.loadParam("speed_track_evade_max",              speed_track_evade_max);
+	param_loader.loadParam("speed_track_evade_min_gain",         speed_track_evade_min_gain);
+	param_loader.loadParam("speed_track_evade_max_gain",         speed_track_evade_max_gain);
+	param_loader.loadParam("speed_track_heading_attractor_gain", speed_track_heading_attractor_gain);
 
   //// initialize the dynamic reconfigurables with values from YAML file and values set above
   uvdar_leader_follower::FollowerConfig config;
@@ -355,14 +357,64 @@ SpeedCommand FollowerController::createSpeedCommand() {
 
   if(use_estimator && use_speed_tracker)
   {
+	// =======================================================================
+	// Attractor Location
+	// =======================================================================
+	Eigen::Vector3d attractor_point;
+	{
+		if(leader_predicted_velocity.norm() > 0.1 &&
+		   follower_linear_velocity_odometry.norm() > 1)
+		{
+			ROS_INFO("Update  position offset");
+			Eigen::Vector3d leader_dir = leader_predicted_velocity.normalized();
+			Eigen::Matrix<double, 3, 3> rot;
+			// clockwise 90deg
+			rot << 0,  1, 0,
+				   -1, 0, 0,
+				   0,  0, -1;
+
+			Eigen::Vector3d perp_dir = rot*leader_dir;
+
+			position_offset = perp_dir * speed_track_attractor_offset;
+		}
+		Eigen::Vector3d attractor_point1 = leader_position + position_offset;
+		Eigen::Vector3d attractor_point2 = leader_position - position_offset;
+
+		if((attractor_point1 - follower_position_odometry).norm() <
+		   (attractor_point2 - follower_position_odometry).norm())
+		{
+			attractor_point = attractor_point1;
+		}
+		else
+		{
+			attractor_point = attractor_point2;
+		}
+	}
+
+	// =========================================================================
+	// Heading Attractor
+	// =========================================================================
+	double reference_heading = 0;
+	{
+		Eigen::Vector3d to_leader_dir =
+			(leader_position - follower_position_odometry).normalized();
+		double angle_to_leader = std::atan2(to_leader_dir(1), to_leader_dir(0));
+		double target_heading = angle_to_leader + heading_offset;
+		double offset_from_heading = target_heading - follower_heading_odometry;
+		reference_heading =
+			follower_heading_odometry +
+			(
+				offset_from_heading *
+				speed_track_heading_attractor_gain * control_action_interval
+			);
+	}
+
+
 	// =========================================================================
 	// Attractor to target
 	// =========================================================================
 	Eigen::Vector3d attractor_vel;
 	{
-		// TODO get perpendiular point for attractor
-		Eigen::Vector3d attractor_point = leader_predicted_position + position_offset;
-
 		Eigen::Vector3d drone_to_attractor =
 			attractor_point - follower_position_odometry;
 
@@ -409,8 +461,8 @@ SpeedCommand FollowerController::createSpeedCommand() {
 						distance_between_drones - speed_track_evade_max_safe
 					)
 				);
-		}
-		else if (distance_between_drones > speed_track_evade_max_safe)
+		} else if(distance_between_drones > speed_track_evade_max_safe &&
+			      distance_between_drones < 15)
 		{
 			evasion_speed = speed_track_evade_max_gain *
 				tan
@@ -425,6 +477,10 @@ SpeedCommand FollowerController::createSpeedCommand() {
 					)
 				);
 		}
+		else if( distance_between_drones >= 15)
+		{
+			evasion_speed = 100;
+		}
 
 		evasion_vel = evasion_dir * evasion_speed;
 	}
@@ -434,6 +490,7 @@ SpeedCommand FollowerController::createSpeedCommand() {
 	// =========================================================================
 	Eigen::Vector3d target_velocity = attractor_vel + evasion_vel;
 
+
 	if(target_velocity.norm() > speed_track_max_vel)
 	{
 		target_velocity = target_velocity.normalized() * speed_track_max_vel;
@@ -441,7 +498,7 @@ SpeedCommand FollowerController::createSpeedCommand() {
 
 	  command.velocity = target_velocity;
 	  command.height   = 3;
-	  command.heading  = follower_heading_odometry;
+	  command.heading  = reference_heading;//follower_heading_odometry;
 	  command.use_for_control = true;
   }
   else
