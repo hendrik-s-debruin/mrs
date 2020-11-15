@@ -28,6 +28,7 @@ double speed_track_evade_max;
 double speed_track_evade_min_gain;
 double speed_track_evade_max_gain;
 double speed_track_heading_attractor_gain;
+double speed_track_attractor_vel_gain;
 
 Eigen::Vector3d leader_position;
 ros::Time       last_leader_contact;
@@ -81,6 +82,7 @@ uvdar_leader_follower::FollowerConfig FollowerController::initialize(mrs_lib::Pa
 	param_loader.loadParam("speed_track_evade_min_gain",         speed_track_evade_min_gain);
 	param_loader.loadParam("speed_track_evade_max_gain",         speed_track_evade_max_gain);
 	param_loader.loadParam("speed_track_heading_attractor_gain", speed_track_heading_attractor_gain);
+	param_loader.loadParam("speed_track_attractor_vel_gain",     speed_track_attractor_vel_gain);
 
   //// initialize the dynamic reconfigurables with values from YAML file and values set above
   uvdar_leader_follower::FollowerConfig config;
@@ -362,11 +364,12 @@ SpeedCommand FollowerController::createSpeedCommand() {
 	// =======================================================================
 	Eigen::Vector3d attractor_point;
 	{
+		Eigen::Vector3d attractor_vel_comp = Eigen::Vector3d::Zero();
 		if(leader_predicted_velocity.norm() > 0.1 &&
 		   follower_linear_velocity_odometry.norm() > 1)
 		{
-			ROS_INFO("Update  position offset");
 			Eigen::Vector3d leader_dir = leader_predicted_velocity.normalized();
+			ROS_INFO("Update  position offset");
 			Eigen::Matrix<double, 3, 3> rot;
 			// clockwise 90deg
 			rot << 0,  1, 0,
@@ -376,6 +379,11 @@ SpeedCommand FollowerController::createSpeedCommand() {
 			Eigen::Vector3d perp_dir = rot*leader_dir;
 
 			position_offset = perp_dir * speed_track_attractor_offset;
+			attractor_vel_comp = leader_dir *
+			(
+				leader_predicted_velocity.norm() - follower_linear_velocity_odometry.dot(leader_predicted_velocity)
+			) *
+		   speed_track_attractor_vel_gain;
 		}
 		Eigen::Vector3d attractor_point1 = leader_position + position_offset;
 		Eigen::Vector3d attractor_point2 = leader_position - position_offset;
@@ -389,6 +397,9 @@ SpeedCommand FollowerController::createSpeedCommand() {
 		{
 			attractor_point = attractor_point2;
 		}
+
+		attractor_point += attractor_vel_comp;
+
 	}
 
 	// =========================================================================
@@ -447,7 +458,8 @@ SpeedCommand FollowerController::createSpeedCommand() {
 
 		double evasion_speed = 0;
 
-		if(distance_between_drones < speed_track_evade_min_safe)
+		if(distance_between_drones < speed_track_evade_min_safe &&
+		   distance_between_drones > speed_track_evade_min)
 		{
 			evasion_speed = speed_track_evade_max_gain *
 				tan
@@ -461,7 +473,12 @@ SpeedCommand FollowerController::createSpeedCommand() {
 						distance_between_drones - speed_track_evade_max_safe
 					)
 				);
-		} else if(distance_between_drones > speed_track_evade_max_safe &&
+		}
+		else if (distance_between_drones < speed_track_evade_min)
+		{
+			evasion_speed = 100;
+		}
+		else if(distance_between_drones > speed_track_evade_max_safe &&
 			      distance_between_drones < 15)
 		{
 			evasion_speed = speed_track_evade_max_gain *

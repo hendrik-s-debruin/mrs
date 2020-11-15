@@ -8,17 +8,20 @@ speed_track_max_vel: 4.8 # [m/s]
 speed_track_attractor_width: 3 # [m]
 speed_track_attractor_gain: 0.5 # [1/(m s)]
 # speed_track_attractor_offset: 6.4 # [m]
-speed_track_attractor_offset: 3.4 # [m]
+speed_track_attractor_offset: 5 # [m]
+speed_track_attractor_vel_gain: 3
 
 speed_track_evade_min_safe: 6 # m
+# speed_track_evade_min: 3 # m
 speed_track_evade_min: 3 # m
 # speed_track_evade_max_safe: 12 # m
 speed_track_evade_max_safe: 6 # m
-speed_track_evade_max: 10 # m
-speed_track_evade_min_gain: 3.464
+speed_track_evade_max: 9 # m
+# speed_track_evade_min_gain: 3.464
+3peed_track_evade_min_gain: 5.464
 speed_track_evade_max_gain: 3.464
 
-speed_track_heading_attractor_gain: 1.5
+speed_track_heading_attractor_gain: 0.5
 
 
 control_action_interval: 0.01 # [s]
